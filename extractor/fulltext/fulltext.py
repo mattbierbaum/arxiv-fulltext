@@ -5,11 +5,11 @@ import shlex
 
 from subprocess import check_output, CalledProcessError, TimeoutExpired
 
-import logger
+import logging
 import fixunicode
 import stamp
 
-log = logger.getLogger('fulltext')
+log = logging.getLogger('fulltext')
 TIMELIMIT = 10*60
 
 PDF2TXT = 'pdf2txt.py'

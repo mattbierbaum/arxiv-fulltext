@@ -2,3 +2,7 @@
 __pycache__
 *.pdf2txt
 *.pdftotext
+.DS_Store
+
+build
+.coverage

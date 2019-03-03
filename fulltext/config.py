@@ -5,10 +5,7 @@ Docstrings are from the `Flask configuration documentation
 <http://flask.pocoo.org/docs/0.12/config/>`_.
 """
 import os
-
-
-VERSION = '0.1'
-"""The application version, used to sign extracted fulltext."""
+import re
 
 ON = 'yes'
 OFF = 'no'
@@ -203,26 +200,71 @@ to be loaded.
 """
 
 # SUBMISSION_DATABASE_URL = os.environ.get('SUBMISSION_DATABASE_URL')
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', 'nope')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', 'nope')
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', None)
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', None)
+AWS_SHARED_CREDENTIALS_FILE = os.environ.get('AWS_SHARED_CREDENTIALS_FILE', None)
 AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
-
-DYNAMODB_ENDPOINT = os.environ.get('DYNAMODB_ENDPOINT', None)
-"""For testing only."""
-DYNAMODB_VERIFY = os.environ.get('DYNAMODB_VERIFY', 'true')
-"""For testing only."""
+if (AWS_ACCESS_KEY_ID is None
+        and AWS_SECRET_ACCESS_KEY is None
+        and AWS_SHARED_CREDENTIALS_FILE is not None):
+    try:
+        with open(AWS_SHARED_CREDENTIALS_FILE) as f:
+            _raw = f.read()
+            _match = re.search(
+                r"\[default\]\naws_access_key_id=(.*)\naws_secret_access_key=(.*)",
+                _raw
+            )
+            AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY = _match.groups()
+            os.environ['AWS_ACCESS_KEY_ID'] = AWS_ACCESS_KEY_ID
+            os.environ['AWS_SECRET_ACCESS_KEY'] = AWS_SECRET_ACCESS_KEY
+    except Exception as e:
+        print('could not load credentials: %s' % e)
+        pass
 
 SOURCE_WHITELIST = os.environ.get('SOURCE_WHITELIST',
                                   'arxiv.org,export.arxiv.org')
 
-INSTANCE_CREDENTIALS = os.environ.get('INSTANCE_CREDENTIALS', '')
 
-EXTRACTION_ENDPOINT = os.environ.get('EXTRACTION_ENDPOINT', 'http://localhost')
+FULLTEXT_DOCKER_IMAGE = os.environ.get('FULLTEXT_DOCKER_IMAGE',
+                                       'arxiv/fulltext-extractor:0.3')
 
-CLOUDWATCH_ENDPOINT = os.environ.get('CLOUDWATCH_ENDPOINT', None)
-CLOUDWATCH_VERIFY = os.environ.get('CLOUDWATCH_VERIFY', 'true')
+# Settings for the indexing agent.
+KINESIS_ENDPOINT = os.environ.get('KINESIS_ENDPOINT')
+"""Can be used to set an alternate endpoint, e.g. for testing."""
 
-KINESIS_ENDPOINT = os.environ.get('KINESIS_ENDPOINT', None)
-KINESIS_VERIFY = os.environ.get('KINESIS_VERIFY', 'true')
+KINESIS_VERIFY = os.environ.get('KINESIS_VERIFY', "true")
+"""Indicates whether SSL certificate verification should be enforced."""
 
-FULLTEXT_DOCKER_IMAGE = os.environ.get('FULLTEXT_DOCKER_IMAGE', 'arxiv/fulltext')
+KINESIS_STREAM = os.environ.get('KINESIS_STREAM', 'PDFIsAvailable')
+"""Name of the stream to which the indexing agent subscribes."""
+
+KINESIS_SHARD_ID = os.environ.get('KINESIS_SHARD_ID', '0')
+
+KINESIS_CHECKPOINT_VOLUME = os.environ.get('KINESIS_CHECKPOINT_VOLUME',
+                                           '/tmp')
+
+KINESIS_START_TYPE = os.environ.get('KINESIS_START_TYPE', 'AT_TIMESTAMP')
+KINESIS_START_AT = os.environ.get('KINESIS_START_AT')
+
+KINESIS_SLEEP = os.environ.get('KINESIS_SLEEP', '0.1')
+"""Amount of time to wait before moving on to the next record."""
+
+
+REDIS_ENDPOINT = os.environ.get('REDIS_ENDPOINT')
+
+BASE_SERVER = 'arxiv.org'
+URLS = [
+    ('submission_pdf', '/pdf/<submission_id>', BASE_SERVER),
+    ('pdf', '/pdf/<paper_id>', BASE_SERVER)
+]
+
+VERSION = '0.3'
+"""
+The extractor version, used to sign extracted fulltext.
+
+This should only be incremented when the extraction process itself changes,
+not when the API of this web application changes.
+"""
+
+WORKDIR = os.environ.get('WORKDIR', '/tmp')
+STORAGE_VOLUME = os.environ.get('STORAGE_VOLUME', '/tmp/storage')

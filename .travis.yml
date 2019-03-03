@@ -8,11 +8,8 @@ os:
 python:
   - "3.6"
 script:
-  - pip install awscli
-  - export PATH=$PATH:$HOME/.local/bin
-  - eval $(aws ecr get-login --no-include-email --region us-east-1)
-  - pip install -r requirements/test.txt
-  - nose2 -s extractor
-  - nose2
+  - pip install -U pip pipenv
+  - pipenv install --dev
+  - pipenv run nose2 -s extractor -s ./ --with-coverage
 after_success:
   - coveralls
