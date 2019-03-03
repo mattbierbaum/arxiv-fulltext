@@ -2,7 +2,7 @@ import re
 
 SPACE_DIGIT = r'\s*\d\s*'
 SPACE_NUMBER = r'(?:{})+'.format(SPACE_DIGIT)
-SPACE_CHAR = r'\s*[a-zA-Z\.]\s*'
+SPACE_CHAR = r'\s*[a-zA-Z\.-]\s*'
 SPACE_WORD = r'(?:{})+'.format(SPACE_CHAR)
 
 # old style ID, 7 digits in a row
