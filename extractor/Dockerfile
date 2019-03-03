@@ -19,5 +19,4 @@ RUN pip3 install --no-cache-dir pdfminer3k==1.3.1
 ADD fulltext /scripts
 
 VOLUME ["/pdfs"]
-
-ENTRYPOINT ["python", "/scripts/launch_single.py"]
+CMD python3.6 /scripts/launch.py
