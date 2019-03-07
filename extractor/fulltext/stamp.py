@@ -54,7 +54,7 @@ def _extract_arxiv_stamp(txt):
     return '{} {}'.format(txt[:s].strip(), txt[e:].strip()), txt[s:e].strip()
 
 
-def remove_stamp(txt):
+def remove_stamp(txt, split=1000):
     """
     Given full text, remove the stamp placed in the pdf by arxiv itself. This
     deserves a bit of consideration since the stamp often becomes mangled by
@@ -71,12 +71,13 @@ def remove_stamp(txt):
     out : string
         Full text without stamp
     """
-    txt0, stamp0 = _extract_arxiv_stamp(txt)
-    txt1, stamp1 = _extract_arxiv_stamp(txt[::-1])
+    t0, t1 = txt[:split], txt[split:]
+    txt0, stamp0 = _extract_arxiv_stamp(t0)
+    txt1, stamp1 = _extract_arxiv_stamp(t0[::-1])
 
     if stamp0:
-        return txt0
+        return txt0 + t1
     elif stamp1:
-        return txt1[::-1]
+        return txt1[::-1] + t1
     else:
         return txt

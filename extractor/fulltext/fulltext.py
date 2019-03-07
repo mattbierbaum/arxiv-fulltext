@@ -1,10 +1,11 @@
 import os
 import re
+import sys
 import glob
 import shlex
 
 from multiprocessing import Pool
-from subprocess import check_output, CalledProcessError, TimeoutExpired
+from subprocess import check_call, CalledProcessError, TimeoutExpired
 
 import logging
 import fixunicode
@@ -12,6 +13,7 @@ import stamp
 
 log = logging.getLogger('fulltext')
 TIMELIMIT = 2*60
+STAMP_SEARCH_LIMIT = 1000
 
 PDF2TXT = 'pdf2txt.py'
 PDFTOTEXT = 'pdftotext'
@@ -45,6 +47,10 @@ def average_word_length(txt):
     return avgw
 
 
+def process_timeout(cmd, timeout):
+    return check_call(cmd, timeout=timeout)
+
+
 # ============================================================================
 #  functions for calling the text extraction services
 # ============================================================================
@@ -72,7 +78,7 @@ def run_pdf2txt(pdffile: str, timelimit: int=TIMELIMIT, options: str=''):
         cmd=PDF2TXT, options=options, output=tmpfile, pdf=pdffile
     )
     cmd = shlex.split(cmd)
-    output = check_output(cmd, timeout=timelimit)
+    output = process_timeout(cmd, timeout=timelimit)
     log.info(output)
 
     with open(tmpfile) as f:
@@ -103,7 +109,7 @@ def run_pdftotext(pdffile: str, timelimit: int=TIMELIMIT) -> str:
         cmd=PDFTOTEXT, pdf=pdffile, output=tmpfile
     )
     cmd = shlex.split(cmd)
-    output = check_output(cmd, timeout=timelimit)
+    output = process_timeout(cmd, timeout=timelimit)
     log.info(output)
 
     with open(tmpfile) as f:
@@ -162,7 +168,7 @@ def fulltext(pdffile: str, timelimit: int=TIMELIMIT):
         output = run_pdftotext(pdffile, timelimit=3*timelimit)
 
     output = fixunicode.fix_unicode(output)
-    output = stamp.remove_stamp(output)
+    #output = stamp.remove_stamp(output, split=STAMP_SEARCH_LIMIT)
     wordlength = average_word_length(output)
 
     if wordlength <= 45:
@@ -170,7 +176,7 @@ def fulltext(pdffile: str, timelimit: int=TIMELIMIT):
 
     output = run_pdf2txt_A(pdffile, timelimit=timelimit)
     output = fixunicode.fix_unicode(output)
-    output = stamp.remove_stamp(output)
+    #output = stamp.remove_stamp(output, split=STAMP_SEARCH_LIMIT)
     wordlength = average_word_length(output)
 
     if wordlength > 45:
@@ -278,14 +284,18 @@ def convert_directory_parallel(path, processes):
     pdffiles = sorted_files(globber)
 
     pool = Pool(processes=processes)
-    pool.map(convert_safe, pdffiles)
+    result = pool.map(convert_safe, pdffiles)
+    pool.close()
+    pool.join()
+
 
 def convert_safe(pdffile):
     """ Conversion function that never fails """
     try:
         convert(pdffile)
-    except:
-        pass
+    except Exception as e:
+        print('File conversion failed for {}: {}'.format(pdffile, e))
+
 
 def convert(path: str, skipconverted=True) -> str:
     """
