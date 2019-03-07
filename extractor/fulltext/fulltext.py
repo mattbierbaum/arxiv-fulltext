@@ -3,6 +3,7 @@ import re
 import glob
 import shlex
 
+from multiprocessing import Pool
 from subprocess import check_output, CalledProcessError, TimeoutExpired
 
 import logging
@@ -10,7 +11,7 @@ import fixunicode
 import stamp
 
 log = logging.getLogger('fulltext')
-TIMELIMIT = 10*60
+TIMELIMIT = 2*60
 
 PDF2TXT = 'pdf2txt.py'
 PDFTOTEXT = 'pdftotext'
@@ -158,7 +159,7 @@ def fulltext(pdffile: str, timelimit: int=TIMELIMIT):
     try:
         output = run_pdf2txt(pdffile, timelimit=timelimit)
     except (TimeoutExpired, CalledProcessError) as e:
-        output = run_pdftotext(pdffile, timelimit=None)
+        output = run_pdftotext(pdffile, timelimit=3*timelimit)
 
     output = fixunicode.fix_unicode(output)
     output = stamp.remove_stamp(output)
@@ -257,8 +258,36 @@ def convert_directory(path):
         outlist.append(pdffile)
     return outlist
 
+def convert_directory_parallel(path, processes):
+    """
+    Convert all pdfs in a given `path` to full plain text. For each pdf, a file
+    of the same name but extension .txt will be created. If that file exists,
+    it will be skipped.
 
-def convert(path: str) -> str:
+    Parameters
+    ----------
+    path : str
+        Directory in which to search for pdfs and convert to text
+
+    Returns
+    -------
+    output : list of str
+        List of converted files
+    """
+    globber = os.path.join(path, '*.pdf')
+    pdffiles = sorted_files(globber)
+
+    pool = Pool(processes=processes)
+    pool.map(convert_safe, pdffiles)
+
+def convert_safe(pdffile):
+    """ Conversion function that never fails """
+    try:
+        convert(pdffile)
+    except:
+        pass
+
+def convert(path: str, skipconverted=True) -> str:
     """
     Convert a single PDF to text.
 
@@ -266,6 +295,9 @@ def convert(path: str) -> str:
     ----------
     path : str
         Location of a PDF file.
+
+    skipconverted : boolean
+        Skip conversion when there is a text file already
 
     Returns
     -------
@@ -275,6 +307,10 @@ def convert(path: str) -> str:
     if not os.path.exists(path):
         raise RuntimeError('No such path: %s' % path)
     outpath = reextension(path, 'txt')
+
+    if os.path.exists(outpath):
+        return outpath
+
     try:
         content = fulltext(path)
         with open(outpath, 'w') as f:
