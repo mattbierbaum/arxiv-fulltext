@@ -165,7 +165,7 @@ def fulltext(pdffile: str, timelimit: int=TIMELIMIT):
     try:
         output = run_pdf2txt(pdffile, timelimit=timelimit)
     except (TimeoutExpired, CalledProcessError) as e:
-        output = run_pdftotext(pdffile, timelimit=3*timelimit)
+        output = run_pdftotext(pdffile, timelimit=timelimit)
 
     output = fixunicode.fix_unicode(output)
     #output = stamp.remove_stamp(output, split=STAMP_SEARCH_LIMIT)
